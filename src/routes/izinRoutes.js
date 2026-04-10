@@ -9,7 +9,8 @@ const {
   createIzin,
   updateIzinStatus,
   deleteIzin,
-  createIzinByAdmin
+  createIzinByAdmin,
+  downloadDokumen, // TAMBAHKAN INI
 } = require('../controllers/izinController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -28,5 +29,5 @@ router.get('/tanggal-options', authenticate, authorize('admin','atasan'), getIzi
 router.get('/:id', authenticate, authorize('admin','atasan'), getIzinById);
 router.patch('/:id/status', authenticate, authorize('admin','atasan'), updateIzinStatus);
 router.post('/admin-create', authenticate, authorize('admin','atasan'), createIzinByAdmin);
-
+router.get('/download/:filename', authenticate, authorize('admin','atasan'), downloadDokumen); // TAMBAHKAN INI
 module.exports = router;

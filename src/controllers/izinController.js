@@ -1541,13 +1541,93 @@ const getIzinTanggalOptions = async (req, res) => {
 };
 // **FUNGSI UTAMA YANG DIGUNAKAN** - pilih salah satu
 // Gunakan fungsi generatePresensiIzinReliable untuk hasil terbaik
+
+/**
+ * FUNGSI DOWNLOAD DOKUMEN PENDUKUNG
+ * Endpoint: GET /izin/download/:filename
+ */
+const downloadDokumen = async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Validasi akses (hanya admin dan atasan)
+    if (req.user.roles !== 'admin' && req.user.roles !== 'atasan') {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses ditolak. Hanya admin dan atasan yang dapat mengunduh dokumen.'
+      });
+    }
+    
+    // Validasi filename (mencegah directory traversal attack)
+    if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nama file tidak valid'
+      });
+    }
+    
+    // Validasi ekstensi file (hanya PDF)
+    if (!filename.toLowerCase().endsWith('.pdf')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hanya file PDF yang dapat diunduh'
+      });
+    }
+    
+    // Tentukan path folder upload
+    const uploadDir = path.join(__dirname, '../uploads/izin');
+    const filePath = path.join(uploadDir, filename);
+    
+    console.log(`📥 Download request for: ${filename}`);
+    console.log(`📁 File path: ${filePath}`);
+    
+    // Cek apakah file ada
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ File not found: ${filename}`);
+      return res.status(404).json({
+        success: false,
+        message: 'File dokumen tidak ditemukan'
+      });
+    }
+    
+    // Dapatkan statistik file
+    const stats = fs.statSync(filePath);
+    console.log(`✅ File found. Size: ${stats.size} bytes`);
+    
+    // Set headers untuk download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', stats.size);
+    
+    // Kirim file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+    fileStream.on('error', (error) => {
+      console.error('Error streaming file:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Gagal mengirim file'
+      });
+    });
+    
+  } catch (error) {
+    console.error('❌ Download dokumen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 module.exports = {
   getAllIzin,
   getIzinById,
   getMyIzin,
   getMyIzinPerBulan,
-  getIzinPerTanggal, // TAMBAHKAN INI
-  getIzinTanggalOptions, // TAMBAHKAN INI
+  getIzinPerTanggal,
+  getIzinTanggalOptions,
+  downloadDokumen, // TAMBAHKAN INI
   createIzin,
   updateIzinStatus,
   deleteIzin,
